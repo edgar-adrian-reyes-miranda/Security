@@ -3,6 +3,7 @@ package com.gestion.recursos.Controlllers;
 import java.security.Principal;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,7 +23,7 @@ import com.gestion.recursos.models.Usuario;
 import com.gestion.recursos.services.Impl.UserDetailsServiceImpl;
 
 @RestController
-@CrossOrigin("*")
+@CrossOrigin(origins = "http://localhost:4200")
 public class AuthenticationController {
 	
 	 @Autowired
@@ -34,21 +35,22 @@ public class AuthenticationController {
 	    @Autowired
 	    private JwtUtils jwtUtils;
 
-	    @PostMapping("/generate-token")
-	    public ResponseEntity<?> generarToken(@RequestBody JwtRequst jwtRequest) throws Exception {
-	        try{
-	            autenticar(jwtRequest.getUsername(),jwtRequest.getPassword());
-	        }catch (Exception exception){
-	            exception.printStackTrace();
-	            throw new Exception("Usuario no encontrado");
-	        }
+	@PostMapping("/generate-token")
+	public ResponseEntity<?> generarToken(@RequestBody JwtRequst jwtRequest) throws Exception {
+		try {
+			autenticar(jwtRequest.getUsername(), jwtRequest.getPassword());
+		} catch (BadCredentialsException e) {
+			throw new Exception("Credenciales inválidas");
+		} catch (DisabledException e) {
+			throw new Exception("Usuario deshabilitado");
+		}
 
-	        UserDetails userDetails =  this.userDetailsService.loadUserByUsername(jwtRequest.getUsername());
-	        String token = this.jwtUtils.generateToken(userDetails);
-	        return ResponseEntity.ok(new JwtResponse(token));
-	    }
+		UserDetails userDetails =  this.userDetailsService.loadUserByUsername(jwtRequest.getUsername());
+		String token = this.jwtUtils.generateToken(userDetails);
+		return ResponseEntity.ok(new JwtResponse(token));
+	}
 
-	    private void autenticar(String username,String password) throws Exception {
+	private void autenticar(String username,String password) throws Exception {
 	        try{
 	            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username,password));
 	        }catch (DisabledException exception){
@@ -58,10 +60,21 @@ public class AuthenticationController {
 	        }
 	    }
 
-	    @GetMapping("/actual-usuario")
-	    public Usuario obtenerUsuarioActual(Principal principal){
-	        return (Usuario) this.userDetailsService.loadUserByUsername(principal.getName());
-	    }
-	
+	@GetMapping("/actual-usuario")
+	public ResponseEntity<?> obtenerUsuarioActual(Principal principal) {
+		if (principal != null) {
+			try {
+				UserDetails userDetails = this.userDetailsService.loadUserByUsername(principal.getName());
+				return ResponseEntity.ok(userDetails);
+			} catch (Exception e) {
+				e.printStackTrace();
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener información del usuario");
+			}
+		} else {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No hay usuario autenticado");
+		}
+	}
+
+
 
 }

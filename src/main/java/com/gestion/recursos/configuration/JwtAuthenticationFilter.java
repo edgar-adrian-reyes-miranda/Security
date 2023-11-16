@@ -39,15 +39,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	        if(requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")){
 	            jwtToken = requestTokenHeader.substring(7);
 
-	            try{
-	                username = this.jwtUtil.extractUsername(jwtToken);
-	            }catch (ExpiredJwtException exception){
-	                System.out.println("El token ha expirado");
-	            }catch (Exception e){
-	                e.printStackTrace();
-	            }
+				try {
+					username = this.jwtUtil.extractUsername(jwtToken);
+				} catch (ExpiredJwtException exception) {
+					System.out.println("El token ha expirado");
+					response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expirado");
+					return;
+				} catch (Exception e) {
+					e.printStackTrace();
+					response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Error al procesar el token");
+					return;
+				}
 
-	        }else{
+
+			}else{
 	            System.out.println("Token invalido , no empieza con bearer string");
 	        }
 
