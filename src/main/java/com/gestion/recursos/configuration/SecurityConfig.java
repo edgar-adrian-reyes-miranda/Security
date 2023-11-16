@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.Arrays;
 
+@SuppressWarnings("deprecation")
 @EnableWebSecurity
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -53,27 +54,26 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         auth.userDetailsService(this.userDetailsServiceImpl).passwordEncoder(passwordEncoder());
     }
 
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                .csrf().disable()
-                .cors().configurationSource(request -> {
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration corsConfiguration = new CorsConfiguration();
                     corsConfiguration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
                     corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
                     corsConfiguration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
                     corsConfiguration.setAllowCredentials(true);
                     return corsConfiguration;
-                })
-                .and()
-                .authorizeRequests()
-                .antMatchers("/generate-token","/usuario/").permitAll()
-                .antMatchers(HttpMethod.OPTIONS).permitAll()
-                .anyRequest().authenticated()
-                .and()
-                .exceptionHandling().authenticationEntryPoint(unauthorizedHandler)
-                .and()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+                }))
+                .authorizeRequests(requests -> requests
+                        .antMatchers("/generate-token", "/usuario/").permitAll()
+                        .antMatchers(HttpMethod.OPTIONS).permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling()
+                .authenticationEntryPoint(unauthorizedHandler).and()
+                .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
     }
